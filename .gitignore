@@ -1,41 +1,16 @@
-# === General ===
-.DS_Store
-Thumbs.db
+# Ignore all node_modules folders
+**/node_modules/
 
-# === Node.js (Client & Server) ===
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# Ignore all .env files
+**/.env
 
-# === Env Files ===
-.env
-.env.*
+# Dist/build folders
+client/dist/
+server/dist/
+server/build/
 
-# === Logs & Temp ===
-logs/
+# System files
 *.log
-pids/
-*.pid
-*.pid.lock
-tmp/
-temp/
-uploads/
-
-# === Build Artifacts ===
-dist/
-build/
-.vite/
-.cache/
-.next/
-
-# === Test Coverage ===
-coverage/
-
-# === IDEs ===
+.DS_Store
 .vscode/
 .idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
