@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import cloudinary from '../utils/cloudinary.js';
 import getDataUri from '../utils/datauri.js';
 import User from '../models/user.model.js';
+import Post from '../models/post.model.js';
 
 
 
@@ -94,16 +95,15 @@ export const login = async (req, res) => {
 
         const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: '3d' });
 
-       const populatePosts = await Promise.all(
-    Array.isArray(user.post) ? user.post.map(async (postId) => {
-        const post = await Post.findById(postId);
-        if (post?.author?.equals(user._id)) {
-            return post;
-        }
-        return null;
-    }) : []
-);
-
+       const populatedPosts = await Promise.all(
+            user.posts.map( async (postId) => {
+                const post = await Post.findById(postId);
+                if(post.author.equals(user._id)){
+                    return post;
+                }
+                return null;
+            })
+        )
 
         return res.cookie("token", token, {
             httpOnly: true,
@@ -117,7 +117,7 @@ export const login = async (req, res) => {
                 id: user._id,
                 bio: user.bio || "",
                 profilePicture: user.profilePicture || "",
-                post: populatePosts,
+                posts: populatedPosts,
                 followers: user.followers || [],
                 following: user.following || []
 
@@ -153,14 +153,12 @@ export const logout = async (req, res) => {
 
 export const getProfile = async (req, res) => {
     try {
-        const userId = req.params.id; 
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({
-                message: "User not found",
-                success: false
-            });
-        }
+        const userId = req.params.id;
+        let user = await User.findById(userId).populate({path:'posts', createdAt:-1}).populate('bookmarks');
+        return res.status(200).json({
+            user,
+            success: true
+        });
         return res.status(200).json({
             message: "User profile retrieved successfully",
             user,
