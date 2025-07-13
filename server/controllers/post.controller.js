@@ -3,7 +3,7 @@ import cloudinary from "../utils/cloudinary.js";
 import  Post  from "../models/post.model.js";
 import  User  from "../models/user.model.js";
 import  Comment  from "../models/comment.model.js";
-// import { getReceiverSocketId, io } from "../socket/socket.js";
+import { getReceiverSocketId, io } from "../socket/socket.js";
 
 export const addNewPost = async (req, res) => {
     try {
@@ -13,7 +13,7 @@ export const addNewPost = async (req, res) => {
 
         if (!image) return res.status(400).json({ message: 'Image required' });
 
-        // image upload
+        // image upload 
         const optimizedImageBuffer = await sharp(image.buffer)
             .resize({ width: 800, height: 800, fit: 'inside' })
             .toFormat('jpeg', { quality: 80 })
@@ -22,37 +22,27 @@ export const addNewPost = async (req, res) => {
         // buffer to data uri
         const fileUri = `data:image/jpeg;base64,${optimizedImageBuffer.toString('base64')}`;
         const cloudResponse = await cloudinary.uploader.upload(fileUri);
-        
         const post = await Post.create({
             caption,
             image: cloudResponse.secure_url,
             author: authorId
         });
-
         const user = await User.findById(authorId);
         if (user) {
             user.posts.push(post._id);
             await user.save();
         }
 
-        // Populate the post with author data AND populate user's posts
         await post.populate({ path: 'author', select: '-password' });
-        
-        // Get updated user with populated posts
-        const updatedUser = await User.findById(authorId)
-            .select('-password')
-            .populate('posts');
 
         return res.status(201).json({
             message: 'New post added',
             post,
-            user: updatedUser, // Send updated user data
             success: true,
         })
 
     } catch (error) {
         console.log(error);
-        return res.status(500).json({ message: 'Internal server error' });
     }
 }
 export const getAllPost = async (req, res) => {

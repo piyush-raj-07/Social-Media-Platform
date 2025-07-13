@@ -6,12 +6,12 @@ import dotenv from "dotenv";
 import connectDB from './utils/db.js';
 import userRoute from './routes/user.route.js';
 import postRoute from "./routes/post.route.js";
-import messageRoute from './routes/message.route.js'; // ✅ use route, not model
+import messageRoute from './routes/message.route.js'; 
+import { app, server } from "./socket/socket.js"; // ✅ already contains express()
 
 dotenv.config();
 
 const PORT = process.env.PORT || 3000;
-const app = express();
 
 // Middleware to parse incoming JSON and form data
 app.use(express.json());
@@ -37,7 +37,7 @@ app.use('/api/v1/post', postRoute);
 app.use('/api/v1/message', messageRoute);
 
 // Start server after DB connection
-app.listen(PORT, async () => {
+server.listen(PORT, async () => {
   await connectDB();
   console.log(`🚀 Server is running on port ${PORT}`);
 });

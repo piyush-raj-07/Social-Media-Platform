@@ -32,7 +32,6 @@ const CommentDialog = ({ open, setOpen }) => {
   }
 
   const sendMessageHandler = async () => {
-
     try {
       const res = await axios.post(`http://localhost:8000/api/v1/post/${selectedPost?._id}/comment`, { text }, {
         headers: {
@@ -59,54 +58,81 @@ const CommentDialog = ({ open, setOpen }) => {
 
   return (
     <Dialog open={open}>
-      <DialogContent onInteractOutside={() => setOpen(false)} className="max-w-5xl p-0 flex flex-col">
+      <DialogContent onInteractOutside={() => setOpen(false)} className="max-w-5xl p-0 flex flex-col bg-white rounded-xl shadow-2xl">
         <div className='flex flex-1'>
           <div className='w-1/2'>
             <img
               src={selectedPost?.image}
               alt="post_img"
-              className='w-full h-full object-cover rounded-l-lg'
+              className='w-full h-full object-cover rounded-l-xl'
             />
           </div>
-          <div className='w-1/2 flex flex-col justify-between'>
-            <div className='flex items-center justify-between p-4'>
+          <div className='w-1/2 flex flex-col justify-between bg-white rounded-r-xl'>
+            <div className='flex items-center justify-between p-6 border-b border-gray-100'>
               <div className='flex gap-3 items-center'>
                 <Link>
-                  <Avatar>
+                  <Avatar className="w-10 h-10 ring-2 ring-gray-100">
                     <AvatarImage src={selectedPost?.author?.profilePicture} />
-                    <AvatarFallback>CN</AvatarFallback>
+                    <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold">CN</AvatarFallback>
                   </Avatar>
                 </Link>
                 <div>
-                  <Link className='font-semibold text-xs'>{selectedPost?.author?.username}</Link>
-                  {/* <span className='text-gray-600 text-sm'>Bio here...</span> */}
+                  <Link className='font-semibold text-sm text-gray-800 hover:text-blue-600 transition-colors'>
+                    {selectedPost?.author?.username}
+                  </Link>
                 </div>
               </div>
 
-              <Dialog>
+              {/* <Dialog>
                 <DialogTrigger asChild>
-                  <MoreHorizontal className='cursor-pointer' />
+                  <button className='p-2 hover:bg-gray-100 rounded-full transition-colors'>
+                    <MoreHorizontal className='cursor-pointer w-5 h-5 text-gray-600' />
+                  </button>
                 </DialogTrigger>
-                <DialogContent className="flex flex-col items-center text-sm text-center">
-                  <div className='cursor-pointer w-full text-[#ED4956] font-bold'>
+                <DialogContent className="flex flex-col items-center text-sm text-center bg-white rounded-xl shadow-lg">
+                  <div className='cursor-pointer w-full text-red-500 font-semibold py-3 hover:bg-red-50 rounded-lg transition-colors'>
                     Unfollow
                   </div>
-                  <div className='cursor-pointer w-full'>
+                  <div className='cursor-pointer w-full text-gray-700 py-3 hover:bg-gray-50 rounded-lg transition-colors'>
                     Add to favorites
                   </div>
                 </DialogContent>
-              </Dialog>
+              </Dialog> */}
             </div>
-            <hr />
-            <div className='flex-1 overflow-y-auto max-h-96 p-4'>
-              {
-                comment.map((comment) => <Comment key={comment._id} comment={comment} />)
-              }
+            
+            <div className='flex-1 overflow-y-auto max-h-96 p-6 bg-gray-50/30'>
+              <div className="space-y-4">
+                {comment.map((comment) => (
+                  <Comment key={comment._id} comment={comment} />
+                ))}
+              </div>
+              {comment.length === 0 && (
+                <div className="text-center text-gray-500 py-8">
+                  <p className="text-sm">No comments yet. Be the first to comment!</p>
+                </div>
+              )}
             </div>
-            <div className='p-4'>
-              <div className='flex items-center gap-2'>
-                <input type="text" value={text} onChange={changeEventHandler} placeholder='Add a comment...' className='w-full outline-none border text-sm border-gray-300 p-2 rounded' />
-                <Button disabled={!text.trim()} onClick={sendMessageHandler} variant="outline">Send</Button>
+            
+            <div className='p-6 bg-white border-t border-gray-100'>
+              <div className='flex items-center gap-3'>
+                <input 
+                  type="text" 
+                  value={text} 
+                  onChange={changeEventHandler} 
+                  placeholder='Add a comment...' 
+                  className='flex-1 outline-none border border-gray-200 text-sm px-4 py-3 rounded-lg focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all bg-gray-50 focus:bg-white' 
+                />
+                <Button 
+                  disabled={!text.trim()} 
+                  onClick={sendMessageHandler} 
+                  className={`px-6 py-3 rounded-lg font-semibold text-sm transition-all ${
+                    text.trim() 
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg' 
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  Send
+                </Button>
               </div>
             </div>
           </div>

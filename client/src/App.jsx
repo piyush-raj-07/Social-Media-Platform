@@ -1,43 +1,44 @@
 import { useEffect } from 'react'
-// import ChatPage from './components/ChatPage'
+import ChatPage from './components/ChatPage'
 import EditProfile from './components/EditProfile'
 import Home from './components/Home'
 import Login from './components/Login'
 import MainLayout from './components/MainLayout'
 import Profile from './components/Profile'
 import Signup from './components/Signup'
-
+import SearchPage from './components/SearchPage'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
-// import { io } from "socket.io-client";
-// import { useDispatch, useSelector } from 'react-redux'
-// import { setSocket } from './redux/socketSlice'
-// import { setOnlineUsers } from './redux/chatSlice'
-// import { setLikeNotification } from './redux/rtnSlice'
-// import ProtectedRoutes from './components/ProtectedRoutes'
+import { io } from "socket.io-client";
+import { useDispatch, useSelector } from 'react-redux'
+import { setSocket } from './redux/socketSlice'
+import { setOnlineUsers } from './redux/chatSlice'
+import ProtectedRoutes from './components/ProtectedRoutes'
 
-
-// Define the routing configuration
 const browserRouter = createBrowserRouter([
   {
-    path: "/",                   // main root route
-    element: <MainLayout />,     // render MainLayout at "/"
+    path: "/",
+    element: <ProtectedRoutes><MainLayout /></ProtectedRoutes>,
     children: [
       {
         path: '/',
-        element: <Home />
+        element: <ProtectedRoutes><Home /></ProtectedRoutes>
       },
       {
         path: '/profile/:id',
-        element:  <Profile />
+        element: <ProtectedRoutes><Profile /></ProtectedRoutes>
       },
       {
         path: '/account/edit',
-        element: <EditProfile />
+        element: <ProtectedRoutes><EditProfile /></ProtectedRoutes>
       },
-    //   {
-    //     path: '/chat',
-    //     element: <ProtectedRoutes><ChatPage /></ProtectedRoutes>
-    //   },
+      {
+        path: '/search',
+        element: <ProtectedRoutes><SearchPage /></ProtectedRoutes>
+      },
+      {
+        path: '/chat',
+        element: <ProtectedRoutes><ChatPage /></ProtectedRoutes>
+      },
     ]
   },
   {
@@ -45,52 +46,48 @@ const browserRouter = createBrowserRouter([
     element: <Login />
   },
   {
-    path: '/signup',             // accessible at "/signup"
-    element: <Signup />          // renders Signup component
+    path: '/signup',
+    element: <Signup />
   },
-]);
+])
 
-// Define the main App component
 function App() {
-  // const { user } = useSelector(store => store.auth);
-  // const { socket } = useSelector(store => store.socketio);
-  // const dispatch = useDispatch();
+  const { user } = useSelector(store => store.auth);
+  const { socket } = useSelector(store => store.socketio);
+  const dispatch = useDispatch();
 
-  // useEffect(() => {
-  //   if (user) {
-  //     const socketio = io('http://localhost:8000', {
-  //       query: {
-  //         userId: user?._id
-  //       },
-  //       transports: ['websocket']
-  //     });
-  //     dispatch(setSocket(socketio));
+  useEffect(() => {
+    if (user) {
+      const socketio = io('http://localhost:8000', {
+        query: {
+          userId: user?.id
+        },
+        transports: ['websocket']
+      });
 
-  //     // Listen for server events
-  //     socketio.on('getOnlineUsers', (onlineUsers) => {
-  //       dispatch(setOnlineUsers(onlineUsers));
-  //     });
+      dispatch(setSocket(socketio));
 
-  //     socketio.on('notification', (notification) => {
-  //       dispatch(setLikeNotification(notification));
-  //     });
+      // listen all the events
+      socketio.on('getOnlineUsers', (onlineUsers) => {
+        console.log('Online Users:', onlineUsers);
+        dispatch(setOnlineUsers(onlineUsers));
+      });
 
-  //     return () => {
-  //       socketio.close();
-  //       dispatch(setSocket(null));
-  //     }
-  //   } else if (socket) {
-  //     socket.close();
-  //     dispatch(setSocket(null));
-  //   }
-  // }, [user, dispatch]);
+      return () => {
+        socketio.close();
+        dispatch(setSocket(null));
+      }
+    } else if (socket) {
+      socket.close();
+      dispatch(setSocket(null));
+    }
+  }, [user, dispatch]);
 
   return (
     <>
-      {/* Provide the router to your app */}
       <RouterProvider router={browserRouter} />
     </>
-  );
+  )
 }
 
-export default App;
+export default App
