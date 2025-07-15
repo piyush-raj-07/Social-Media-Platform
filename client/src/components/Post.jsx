@@ -1,4 +1,4 @@
-"use client"
+
 
 import { Badge } from "@/components/ui/badge"
 import React, { useState, useCallback, useMemo } from "react"
@@ -141,7 +141,7 @@ const Post = ({ post }) => {
     setOpen(true)
   }, [post, dispatch])
 
-  const isAuthor = useMemo(() => user?.id === post.author._id, [user?.id, post.author._id])
+  const isAuthor = useMemo(() => user?.id === post.author?._id, [user?.id, post.author?._id])
 
   return (
     <motion.div
