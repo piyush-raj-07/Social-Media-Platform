@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useState, useCallback, useMemo } from "react"
+import React, { useEffect, useState, useCallback } from "react"
 import { useDispatch, useSelector } from "react-redux"
 import { motion, AnimatePresence } from "framer-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
@@ -10,7 +10,10 @@ import { Button } from "./ui/button"
 import { Send, ArrowLeft, Search, MessageCircle } from "lucide-react"
 import Messages from "./Messages"
 import axios from "axios"
+import { API_URL } from "@/lib/config"
 import { setMessages } from "@/redux/chatSlice"
+import { timeAgo } from "@/lib/utils"
+import useSearchUsers from "@/hooks/useSearchUsers"
 
 const ChatPage = () => {
   const [textMessage, setTextMessage] = useState("")
@@ -23,6 +26,24 @@ const ChatPage = () => {
   // Unified view state for both mobile and desktop
   const [currentView, setCurrentView] = useState("userList") // "userList" or "chat"
 
+  // recent chats (people you have messaged with)
+  const [chats, setChats] = useState([])
+
+  const fetchChats = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_URL}/message/conversations`, { withCredentials: true })
+      if (res.data.success) {
+        setChats(res.data.chats)
+      }
+    } catch (error) {
+      console.log(error)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchChats()
+  }, [fetchChats])
+
   const sendMessageHandler = useCallback(
     async (receiverId) => {
       if (!textMessage.trim()) return
@@ -30,7 +51,7 @@ const ChatPage = () => {
       try {
         setIsLoading(true)
         const res = await axios.post(
-          `http://localhost:8000/api/v1/message/send/${receiverId}`,
+          `${API_URL}/message/send/${receiverId}`,
           { textMessage },
           {
             headers: { "Content-Type": "application/json" },
@@ -70,54 +91,54 @@ const ChatPage = () => {
 
   const handleBackToUserList = useCallback(() => {
     setCurrentView("userList")
-  }, [])
+    fetchChats() // refresh last messages
+  }, [fetchChats])
 
   // Filter users based on search query
-  const filteredUsers = useMemo(() => {
-    if (!searchQuery.trim()) return suggestedUsers
-    return suggestedUsers.filter(user => 
-      user.username.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  }, [suggestedUsers, searchQuery])
+  const query = searchQuery.toLowerCase().trim()
+  const filteredChats = chats.filter((chat) => chat.username?.toLowerCase().includes(query))
 
-  const memoizedSuggestedUsers = useMemo(
-    () =>
-      filteredUsers.map((suggestedUser, index) => {
-        const isOnline = onlineUsers.includes(suggestedUser?._id)
-        return (
-          <motion.div
-            key={suggestedUser._id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-            onClick={() => handleUserSelect(suggestedUser)}
-            className="flex gap-4 items-center py-4 px-5 hover:bg-gray-50 cursor-pointer transition-colors duration-200 rounded-xl"
-          >
-            <div className="relative">
-              <Avatar className="w-14 h-14 ring-2 ring-white shadow-sm">
-                <AvatarImage src={suggestedUser?.profilePicture || "/placeholder.svg"} />
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white font-semibold">
-                  {suggestedUser?.username?.charAt(0).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              {isOnline && (
-                <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-green-500 rounded-full border-2 border-white" />
-              )}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold text-gray-800 truncate text-lg">{suggestedUser?.username}</h3>
-                <span className="text-sm text-gray-500">2m</span>
-              </div>
-              <p className="text-gray-600 truncate">
-                {isOnline ? "Online" : "Last seen recently"}
-              </p>
-            </div>
-          </motion.div>
-        )
-      }),
-    [filteredUsers, onlineUsers, handleUserSelect],
-  )
+  // typing -> search all users on server, else show suggested users
+  const { results: searchResults, loading: searching } = useSearchUsers(searchQuery)
+  const otherUsers = query ? searchResults : suggestedUsers || []
+  // people who are not already in recent chats
+  const filteredSuggested = otherUsers.filter((u) => !chats.some((chat) => chat._id === u._id))
+
+  // one row in the user list (subtitle and time only for recent chats)
+  const renderUser = (chatUser, index, subtitle, time) => {
+    const isOnline = onlineUsers.includes(chatUser?._id)
+    return (
+      <motion.div
+        key={chatUser._id}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.05 }}
+        onClick={() => handleUserSelect(chatUser)}
+        className="flex gap-4 items-center py-4 px-5 hover:bg-gray-50 cursor-pointer transition-colors duration-200 rounded-xl"
+      >
+        <div className="relative">
+          <Avatar className="w-14 h-14 ring-2 ring-white shadow-sm">
+            <AvatarImage src={chatUser?.profilePicture || "/placeholder.svg"} />
+            <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white font-semibold">
+              {chatUser?.username?.charAt(0).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          {isOnline && (
+            <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-green-500 rounded-full border-2 border-white" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-gray-800 truncate text-lg">{chatUser?.username}</h3>
+            {time && <span className="text-sm text-gray-500">{timeAgo(time)}</span>}
+          </div>
+          <p className="text-gray-600 truncate">
+            {subtitle || (isOnline ? "Online" : "Last seen recently")}
+          </p>
+        </div>
+      </motion.div>
+    )
+  }
 
   useEffect(() => {
     return () => {
@@ -158,7 +179,7 @@ const ChatPage = () => {
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <Input
-                    placeholder="Search conversations..."
+                    placeholder="Search people..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="pl-12 bg-gray-50 border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 rounded-xl h-12 text-base"
@@ -168,10 +189,20 @@ const ChatPage = () => {
               
               {/* User List */}
               <div className="flex-1 overflow-y-auto">
-                {memoizedSuggestedUsers.length > 0 ? (
+                {filteredChats.length > 0 || filteredSuggested.length > 0 ? (
                   <div className="p-4 space-y-2">
-                    {memoizedSuggestedUsers}
+                    {filteredChats.length > 0 && (
+                      <p className="px-5 pt-2 text-sm font-semibold text-gray-500">Recent chats</p>
+                    )}
+                    {filteredChats.map((chat, index) => renderUser(chat, index, chat.lastMessage, chat.lastMessageTime))}
+
+                    {filteredSuggested.length > 0 && (
+                      <p className="px-5 pt-4 text-sm font-semibold text-gray-500">{query ? "More people" : "Suggested"}</p>
+                    )}
+                    {filteredSuggested.map((u, index) => renderUser(u, index))}
                   </div>
+                ) : searching ? (
+                  <p className="text-center text-gray-500 py-24">Searching...</p>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-24 text-gray-500">
                     <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-6">

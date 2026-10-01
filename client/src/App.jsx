@@ -7,12 +7,14 @@ import MainLayout from './components/MainLayout'
 import Profile from './components/Profile'
 import Signup from './components/Signup'
 import SearchPage from './components/SearchPage'
+import Notifications from './components/Notifications'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { io } from "socket.io-client";
 import { useDispatch, useSelector } from 'react-redux'
 import { setSocket } from './redux/socketSlice'
 import { setOnlineUsers } from './redux/chatSlice'
 import ProtectedRoutes from './components/ProtectedRoutes'
+import { SERVER_URL } from './lib/config'
 
 const browserRouter = createBrowserRouter([
   {
@@ -39,6 +41,10 @@ const browserRouter = createBrowserRouter([
         path: '/chat',
         element: <ProtectedRoutes><ChatPage /></ProtectedRoutes>
       },
+      {
+        path: '/notifications',
+        element: <ProtectedRoutes><Notifications /></ProtectedRoutes>
+      },
     ]
   },
   {
@@ -58,7 +64,7 @@ function App() {
 
   useEffect(() => {
     if (user) {
-      const socketio = io('http://localhost:8000', {
+      const socketio = io(SERVER_URL, {
         query: {
           userId: user?.id
         },

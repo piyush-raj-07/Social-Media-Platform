@@ -10,6 +10,7 @@ import { readFileAsDataURL } from "@/lib/utils"
 import { Loader2, X, ImageIcon } from "lucide-react"
 import { toast } from "sonner"
 import axios from "axios"
+import { API_URL } from "@/lib/config"
 import { useDispatch, useSelector } from "react-redux"
 import { setPosts } from "@/redux/postSlice"
 
@@ -59,7 +60,7 @@ const CreatePost = ({ open, setOpen }) => {
 
       try {
         setLoading(true)
-        const res = await axios.post("http://localhost:8000/api/v1/post/addpost", formData, {
+        const res = await axios.post(`${API_URL}/post/addpost`, formData, {
           headers: { "Content-Type": "multipart/form-data" },
           withCredentials: true,
         })

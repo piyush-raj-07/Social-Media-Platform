@@ -8,15 +8,18 @@ import { Button } from "./ui/button"
 import { Textarea } from "./ui/textarea"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import axios from "axios"
-import { Loader2, Camera, User, FileText } from "lucide-react"
+import { API_URL } from "@/lib/config"
+import { Loader2, Camera, User, FileText, Lock } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { setAuthUser } from "@/redux/authSlice"
+import { setFollowRequests } from "@/redux/notificationSlice"
 
 const EditProfile = () => {
   const imageRef = useRef()
   const { user } = useSelector((store) => store.auth)
   const [loading, setLoading] = useState(false)
+  const [privacyLoading, setPrivacyLoading] = useState(false)
   const [input, setInput] = useState({
     profilePhoto: user?.profilePicture,
     bio: user?.bio || "",
@@ -50,7 +53,7 @@ const EditProfile = () => {
 
     try {
       setLoading(true)
-      const res = await axios.post("http://localhost:8000/api/v1/user/profile/edit", formData, {
+      const res = await axios.post(`${API_URL}/user/profile/edit`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
         withCredentials: true,
       })
@@ -73,6 +76,27 @@ const EditProfile = () => {
       setLoading(false)
     }
   }, [input, user, dispatch, navigate])
+
+  const privacyHandler = useCallback(async () => {
+    try {
+      setPrivacyLoading(true)
+      const res = await axios.post(`${API_URL}/user/privacy`, {}, { withCredentials: true })
+
+      if (res.data.success) {
+        dispatch(setAuthUser({ ...user, isPrivate: res.data.isPrivate, followers: res.data.followers }))
+        // account became public -> all pending requests got accepted
+        if (!res.data.isPrivate) {
+          dispatch(setFollowRequests([]))
+        }
+        toast.success(res.data.message)
+      }
+    } catch (error) {
+      console.log(error)
+      toast.error(error.response?.data?.message || "Failed to change privacy")
+    } finally {
+      setPrivacyLoading(false)
+    }
+  }, [user, dispatch])
 
   return (
     <motion.div
@@ -185,11 +209,39 @@ const EditProfile = () => {
               </Select>
             </motion.div>
 
-            {/* Submit Button */}
+            {/* Privacy Section */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
+              className="space-y-4"
+            >
+              <label className="flex items-center gap-2 text-lg font-semibold text-gray-900">
+                <Lock className="w-5 h-5" />
+                Account Privacy
+              </label>
+              <div className="flex items-center justify-between gap-4 p-4 bg-gray-50 rounded-xl">
+                <div>
+                  <p className="font-medium text-gray-900">Private account</p>
+                  <p className="text-sm text-gray-500">Only your followers can see your posts</p>
+                </div>
+                <button
+                  onClick={privacyHandler}
+                  disabled={privacyLoading}
+                  className={`w-12 h-7 shrink-0 rounded-full p-1 transition-colors ${user?.isPrivate ? "bg-blue-600" : "bg-gray-300"}`}
+                >
+                  <div
+                    className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${user?.isPrivate ? "translate-x-5" : ""}`}
+                  />
+                </button>
+              </div>
+            </motion.div>
+
+            {/* Submit Button */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
               className="flex justify-end pt-6 border-t border-gray-200"
             >
               {loading ? (

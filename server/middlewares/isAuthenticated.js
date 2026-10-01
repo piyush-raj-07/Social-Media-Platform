@@ -22,9 +22,9 @@ try{
     next();
 }
 catch (error) {
-    console.error("Error in isAuthenticated middleware:", error);
-    return res.status(500).json({
-        message: "Internal server error",
+    // token expired or invalid -> user has to login again (401, not 500)
+    return res.status(401).json({
+        message: "Session expired, please login again",
         success: false
     });
 }

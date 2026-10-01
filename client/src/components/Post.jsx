@@ -9,14 +9,19 @@ import { Bookmark, MessageCircle, MoreHorizontal, Send } from "lucide-react"
 import { Button } from "./ui/button"
 import { FaHeart, FaRegHeart } from "react-icons/fa"
 import CommentDialog from "./CommentDialog"
+import ShareDialog from "./ShareDialog"
 import { useDispatch, useSelector } from "react-redux"
+import { Link } from "react-router-dom"
 import axios from "axios"
+import { API_URL } from "@/lib/config"
 import { toast } from "sonner"
 import { setPosts, setSelectedPost } from "@/redux/postSlice"
+import { setAuthUser } from "@/redux/authSlice"
 
 const Post = ({ post }) => {
   const [text, setText] = useState("")
   const [open, setOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const [isLiking, setIsLiking] = useState(false)
   const [isCommenting, setIsCommenting] = useState(false)
 
@@ -25,7 +30,9 @@ const Post = ({ post }) => {
 
   const [liked, setLiked] = useState(post.likes.includes(user?.id) || false)
   const [postLike, setPostLike] = useState(post.likes.length)
-  const [comment, setComment] = useState(post.comments)
+  const [bookmarked, setBookmarked] = useState(user?.bookmarks?.includes(post._id) || false)
+  // comments come from redux posts, so count stays same in post and comment dialog
+  const comment = post.comments
 
   const dispatch = useDispatch()
 
@@ -45,7 +52,7 @@ const Post = ({ post }) => {
       setIsLiking(true)
 
       const action = wasLiked ? "dislike" : "like"
-      const res = await axios.get(`http://localhost:8000/api/v1/post/${post._id}/${action}`, {
+      const res = await axios.get(`${API_URL}/post/${post._id}/${action}`, {
         withCredentials: true,
       })
 
@@ -80,7 +87,7 @@ const Post = ({ post }) => {
     try {
       setIsCommenting(true)
       const res = await axios.post(
-        `http://localhost:8000/api/v1/post/${post._id}/comment`,
+        `${API_URL}/post/${post._id}/comment`,
         { text },
         {
           headers: { "Content-Type": "application/json" },
@@ -90,7 +97,6 @@ const Post = ({ post }) => {
 
       if (res.data.success) {
         const updatedCommentData = [...comment, res.data.comment]
-        setComment(updatedCommentData)
         const updatedPostData = posts.map((p) =>
           p._id === post._id ? { ...p, comments: updatedCommentData } : p
         )
@@ -108,7 +114,7 @@ const Post = ({ post }) => {
 
   const deletePostHandler = useCallback(async () => {
     try {
-      const res = await axios.delete(`http://localhost:8000/api/v1/post/delete/${post?._id}`, {
+      const res = await axios.delete(`${API_URL}/post/delete/${post?._id}`, {
         withCredentials: true,
       })
       if (res.data.success) {
@@ -124,17 +130,27 @@ const Post = ({ post }) => {
 
   const bookmarkHandler = useCallback(async () => {
     try {
-      const res = await axios.get(`http://localhost:8000/api/v1/post/${post?._id}/bookmark`, {
+      const res = await axios.get(`${API_URL}/post/${post?._id}/bookmark`, {
         withCredentials: true,
       })
       if (res.data.success) {
+        const saved = res.data.type === "saved"
+        setBookmarked(saved)
+
+        // keep saved posts list of logged in user updated
+        const bookmarks = user.bookmarks || []
+        dispatch(setAuthUser({
+          ...user,
+          bookmarks: saved ? [...bookmarks, post._id] : bookmarks.filter((id) => id !== post._id),
+        }))
+
         toast.success(res.data.message)
       }
     } catch (error) {
       console.log(error)
-      toast.error("Failed to bookmark")
+      toast.error(error.response?.data?.message || "Failed to bookmark")
     }
-  }, [post._id])
+  }, [post._id, user, dispatch])
 
   const handleCommentClick = useCallback(() => {
     dispatch(setSelectedPost(post))
@@ -152,14 +168,19 @@ const Post = ({ post }) => {
       {/* Header */}
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-3">
-          <Avatar className="w-10 h-10">
-            <AvatarImage src={post.author?.profilePicture || "/placeholder.svg"} alt="post_image" />
-            <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500 text-white">
-              {post.author?.username?.charAt(0).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          {/* click on picture or username -> open author's profile */}
+          <Link to={`/profile/${post.author?._id}`}>
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={post.author?.profilePicture || "/placeholder.svg"} alt="post_image" />
+              <AvatarFallback className="bg-gradient-to-br from-blue-400 to-purple-500 text-white">
+                {post.author?.username?.charAt(0).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
           <div className="flex items-center gap-2">
-            <h1 className="font-semibold text-gray-900">{post.author?.username}</h1>
+            <Link to={`/profile/${post.author?._id}`} className="font-semibold text-gray-900 hover:text-gray-600">
+              {post.author?.username}
+            </Link>
             {isAuthor && (
               <Badge variant="secondary" className="text-xs">
                 Author
@@ -167,25 +188,21 @@ const Post = ({ post }) => {
             )}
           </div>
         </div>
-        <Dialog>
-          <DialogTrigger asChild>
-            <motion.button whileTap={{ scale: 0.95 }}>
-              <MoreHorizontal className="cursor-pointer text-gray-600 hover:text-gray-900" />
-            </motion.button>
-          </DialogTrigger>
-          <DialogContent className="flex flex-col items-center text-sm text-center">
-            {!isAuthor && (
-              <Button variant="ghost" className="cursor-pointer w-fit text-red-500 font-bold">
-                Hello Jee
-              </Button>
-            )}
-            {isAuthor && (
+        {/* three dot menu only on your own post (delete option) */}
+        {isAuthor && (
+          <Dialog>
+            <DialogTrigger asChild>
+              <motion.button whileTap={{ scale: 0.95 }}>
+                <MoreHorizontal className="cursor-pointer text-gray-600 hover:text-gray-900" />
+              </motion.button>
+            </DialogTrigger>
+            <DialogContent className="flex flex-col items-center text-sm text-center">
               <Button onClick={deletePostHandler} variant="ghost" className="cursor-pointer w-fit text-red-500">
                 Delete
               </Button>
-            )}
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {/* Image */}
@@ -220,13 +237,17 @@ const Post = ({ post }) => {
               <MessageCircle className="w-6 h-6 text-gray-700 hover:text-gray-900" />
             </motion.button>
 
-            <motion.button whileTap={{ scale: 0.9 }}>
+            <motion.button whileTap={{ scale: 0.9 }} onClick={() => setShareOpen(true)}>
               <Send className="w-6 h-6 text-gray-700 hover:text-gray-900" />
             </motion.button>
           </div>
 
           <motion.button whileTap={{ scale: 0.9 }} onClick={bookmarkHandler}>
-            <Bookmark className="w-6 h-6 text-gray-700 hover:text-gray-900" />
+            <Bookmark
+              className={`w-6 h-6 transition-colors ${
+                bookmarked ? "fill-gray-700 text-gray-700" : "text-gray-700 hover:text-gray-900"
+              }`}
+            />
           </motion.button>
         </div>
 
@@ -235,7 +256,9 @@ const Post = ({ post }) => {
         </motion.span>
 
         <p className="text-gray-900 mb-2">
-          <span className="font-semibold mr-2">{post.author?.username}</span>
+          <Link to={`/profile/${post.author?._id}`} className="font-semibold mr-2 hover:text-gray-600">
+            {post.author?.username}
+          </Link>
           {post.caption}
         </p>
 
@@ -250,6 +273,7 @@ const Post = ({ post }) => {
         )}
 
         <CommentDialog open={open} setOpen={setOpen} />
+        <ShareDialog open={shareOpen} setOpen={setShareOpen} post={post} />
 
         {/* Add comment */}
         <div className="flex items-center gap-3 pt-2 border-t border-gray-100">

@@ -2,31 +2,44 @@
 
 import React, { useState, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Home, LogOut, MessageCircle, PlusSquare, Search, TrendingUp, X } from "lucide-react"
+import { Heart, Home, LogOut, MessageCircle, PlusSquare, Search, X } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { toast } from "sonner"
 import axios from "axios"
+import { API_URL } from "@/lib/config"
 import { useNavigate } from "react-router-dom"
 import { useDispatch, useSelector } from "react-redux"
 import { setAuthUser } from "@/redux/authSlice"
 import CreatePost from "./CreatePost"
 import { setPosts, setSelectedPost } from "@/redux/postSlice"
 import { Button } from "./ui/button"
+import { setFollowRequests, setNotifications } from "@/redux/notificationSlice"
+import useGetNotifications from "@/hooks/useGetNotifications"
+import useGetRTN from "@/hooks/useGetRTN"
 
 const LeftSidebar = ({ sidebarOpen, setSidebarOpen }) => {
+  useGetNotifications()
+  useGetRTN()
   const navigate = useNavigate()
   const { user } = useSelector((store) => store.auth)
+  const { notifications } = useSelector((store) => store.notification)
+
+  // badge = unread notifications (follow requests also) -> becomes 0 when notifications page is opened
+  const badgeCount = notifications.filter((n) => !n.read).length
   const dispatch = useDispatch()
   const [open, setOpen] = useState(false)
   const [activeItem, setActiveItem] = useState("Home")
 
   const logoutHandler = useCallback(async () => {
     try {
-      const res = await axios.post("http://localhost:8000/api/v1/user/logout", { withCredentials: true })
+      // 2nd argument is body, 3rd is config -> cookie is really deleted now
+      const res = await axios.post(`${API_URL}/user/logout`, {}, { withCredentials: true })
       if (res.data.success) {
         dispatch(setAuthUser(null))
         dispatch(setSelectedPost(null))
         dispatch(setPosts([]))
+        dispatch(setFollowRequests([]))
+        dispatch(setNotifications([]))
         navigate("/login")
         toast.success(res.data.message)
       }
@@ -61,6 +74,9 @@ const LeftSidebar = ({ sidebarOpen, setSidebarOpen }) => {
       case "Messages":
         navigate("/chat")
         break
+      case "Notifications":
+        navigate("/notifications")
+        break
       default:
         break
     }
@@ -71,8 +87,8 @@ const LeftSidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const sidebarItems = [
     { icon: <Home />, text: "Home" },
     { icon: <Search />, text: "Search" },
-    { icon: <TrendingUp />, text: "Explore" },
     { icon: <MessageCircle />, text: "Messages" },
+    { icon: <Heart />, text: "Notifications" },
     { icon: <PlusSquare />, text: "Create" },
     {
       icon: (
@@ -137,6 +153,11 @@ const LeftSidebar = ({ sidebarOpen, setSidebarOpen }) => {
                   {item.icon}
                 </motion.div>
                 <span className={activeItem === item.text ? "text-blue-600" : "text-gray-700"}>{item.text}</span>
+                {item.text === "Notifications" && badgeCount > 0 && (
+                  <span className="absolute left-7 top-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {badgeCount}
+                  </span>
+                )}
               </motion.div>
             ))}
           </AnimatePresence>

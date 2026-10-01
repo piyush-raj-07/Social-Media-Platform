@@ -7,69 +7,63 @@ import { Link } from "react-router-dom"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { Button } from "./ui/button"
 import axios from "axios"
+import { API_URL } from "@/lib/config"
 import { toast } from "sonner"
 import { setAuthUser } from "@/redux/authSlice"
 
 const SuggestedUsers = () => {
   const { suggestedUsers, user } = useSelector((store) => store.auth)
-  const [followingStates, setFollowingStates] = useState({})
+  // status of each user: "following", "requested" or "none"
+  const [followStatus, setFollowStatus] = useState({})
   const [loadingStates, setLoadingStates] = useState({})
   const [showAll, setShowAll] = useState(false) // New state for "See All"
   const dispatch = useDispatch()
+
+  const getStatus = (suggestedUser) => {
+    if (followStatus[suggestedUser._id]) return followStatus[suggestedUser._id]
+    if (user.following.includes(suggestedUser._id)) return "following"
+    if (suggestedUser.isRequested) return "requested"
+    return "none"
+  }
 
   const followUnfollowHandler = useCallback(
     async (targetUserId) => {
       if (loadingStates[targetUserId]) return
 
-      const wasFollowing = followingStates[targetUserId] ?? user.following.includes(targetUserId)
-
       try {
-        // Instant UI update (optimistic)
-        setFollowingStates((prev) => ({
-          ...prev,
-          [targetUserId]: !wasFollowing,
-        }))
         setLoadingStates((prev) => ({ ...prev, [targetUserId]: true }))
 
         const res = await axios.post(
-          `http://localhost:8000/api/v1/user/followorunfollow/${targetUserId}`,
+          `${API_URL}/user/followorunfollow/${targetUserId}`,
           {},
           { withCredentials: true },
         )
 
         if (res.data.success) {
+          const status = res.data.status
+          setFollowStatus((prev) => ({ ...prev, [targetUserId]: status }))
+
           // Update user's following list in Redux
           const updatedUser = {
             ...user,
-            following: wasFollowing
-              ? user.following.filter((id) => id !== targetUserId)
-              : [...user.following, targetUserId],
+            following: status === "following"
+              ? [...user.following, targetUserId]
+              : user.following.filter((id) => id !== targetUserId),
           }
           dispatch(setAuthUser(updatedUser))
 
           toast.success(res.data.message)
         } else {
-          // Revert optimistic update on failure
-          setFollowingStates((prev) => ({
-            ...prev,
-            [targetUserId]: wasFollowing,
-          }))
           toast.error("Failed to follow/unfollow")
         }
       } catch (error) {
         console.log(error)
         toast.error(error.response?.data?.message || "Failed to follow/unfollow")
-
-        // Revert optimistic update on error
-        setFollowingStates((prev) => ({
-          ...prev,
-          [targetUserId]: wasFollowing,
-        }))
       } finally {
         setLoadingStates((prev) => ({ ...prev, [targetUserId]: false }))
       }
     },
-    [followingStates, loadingStates, user, dispatch],
+    [loadingStates, user, dispatch],
   )
 
   if (!suggestedUsers || suggestedUsers.length === 0) {
@@ -107,7 +101,7 @@ const SuggestedUsers = () => {
       <div className="space-y-4">
         <AnimatePresence>
           {usersToDisplay.map((suggestedUser, index) => {
-            const isFollowing = followingStates[suggestedUser._id] ?? user.following.includes(suggestedUser._id)
+            const status = getStatus(suggestedUser)
             const isLoading = loadingStates[suggestedUser._id]
 
             return (
@@ -136,7 +130,11 @@ const SuggestedUsers = () => {
                         {suggestedUser?.username}
                       </Link>
                     </h3>
-                    <p className="text-gray-500 text-xs truncate">{suggestedUser?.bio || "New to the platform"}</p>
+                    <p className="text-gray-500 text-xs truncate">
+                      {suggestedUser?.followedBy?.length > 0
+                        ? `Followed by ${suggestedUser.followedBy[0]}${suggestedUser.followedBy.length > 1 ? ` + ${suggestedUser.followedBy.length - 1} more` : ""}`
+                        : suggestedUser?.bio || "New to the platform"}
+                    </p>
                   </div>
                 </div>
 
@@ -146,15 +144,17 @@ const SuggestedUsers = () => {
                     disabled={isLoading}
                     size="sm"
                     className={`text-xs px-4 py-2 h-8 rounded-lg font-medium transition-all ${
-                      isFollowing
+                      status !== "none"
                         ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
                         : "bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white"
                     }`}
                   >
                     {isLoading ? (
                       <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                    ) : isFollowing ? (
+                    ) : status === "following" ? (
                       "Following"
+                    ) : status === "requested" ? (
+                      "Requested"
                     ) : (
                       "Follow"
                     )}

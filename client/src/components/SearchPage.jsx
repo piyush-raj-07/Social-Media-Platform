@@ -1,32 +1,22 @@
 "use client"
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useSelector } from 'react-redux';
 import { Link } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Search, X, Users } from 'lucide-react';
+import { Search, X, Users, Lock, Loader2 } from 'lucide-react';
 import useGetSuggestedUsers from '@/hooks/useGetSuggestedUsers';
+import useSearchUsers from '@/hooks/useSearchUsers';
 
 const SearchPage = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const { suggestedUsers } = useSelector(store => store.auth);
-    
+
     // Load suggested users on component mount
     useGetSuggestedUsers();
 
-    // Filter users based on search query
-    const filteredUsers = useMemo(() => {
-        if (!searchQuery.trim()) {
-            return suggestedUsers || [];
-        }
-
-        const query = searchQuery.toLowerCase().trim();
-        return (suggestedUsers || []).filter(user => 
-            user.username?.toLowerCase().includes(query) ||
-            user.bio?.toLowerCase().includes(query) ||
-            user.fullName?.toLowerCase().includes(query)
-        );
-    }, [searchQuery, suggestedUsers]);
+    // search all users on server
+    const { results: filteredUsers, loading } = useSearchUsers(searchQuery);
 
     const handleInputChange = (e) => {
         setSearchQuery(e.target.value);
@@ -56,19 +46,23 @@ const SearchPage = () => {
                     </motion.div>
                 </Link>
                 <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-gray-900 truncate">
+                    <h3 className="flex items-center gap-1 font-semibold text-gray-900 truncate">
                         <Link to={`/profile/${user._id}`} className="hover:text-gray-700 transition-colors">
                             {user.username}
                         </Link>
+                        {user.isPrivate && <Lock className="w-3.5 h-3.5 text-gray-400" />}
+                        {user.isFollowing && (
+                            <span className="ml-1 text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Following</span>
+                        )}
                     </h3>
                     <p className="text-gray-500 text-sm truncate mb-1">
-                        {user.bio || "No bio available"}
+                        {user.followedBy?.length > 0
+                            ? `Followed by ${user.followedBy[0]}${user.followedBy.length > 1 ? ` + ${user.followedBy.length - 1} more` : ""}`
+                            : user.bio || "No bio available"}
                     </p>
-                    {user.followers && (
-                        <span className="text-xs text-gray-400">
-                            {user.followers.length} followers
-                        </span>
-                    )}
+                    <span className="text-xs text-gray-400">
+                        {user.followersCount || 0} followers
+                    </span>
                 </div>
             </div>
         </motion.div>
@@ -101,7 +95,7 @@ const SearchPage = () => {
                     <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                     <input
                         type="text"
-                        placeholder="Search users by name, username, or bio..."
+                        placeholder="Search users by username..."
                         value={searchQuery}
                         onChange={handleInputChange}
                         className="w-full pl-12 pr-12 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
@@ -169,7 +163,11 @@ const SearchPage = () => {
                             </h2>
                         </motion.div>
                         
-                        {filteredUsers.length > 0 ? (
+                        {loading ? (
+                            <div className="flex justify-center py-10">
+                                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                            </div>
+                        ) : filteredUsers.length > 0 ? (
                             <div className="space-y-4">
                                 {filteredUsers.map((user, index) => (
                                     <UserCard key={user._id} user={user} index={index} />

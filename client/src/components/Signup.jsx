@@ -5,6 +5,7 @@ import { motion } from "framer-motion"
 import { Input } from "./ui/input"
 import { Button } from "./ui/button"
 import axios from "axios"
+import { API_URL } from "@/lib/config"
 import { toast } from "sonner"
 import { Link, useNavigate } from "react-router-dom"
 import { Loader2, Eye, EyeOff, User, Mail, Lock } from "lucide-react"
@@ -41,7 +42,7 @@ const Signup = () => {
 
       try {
         setLoading(true)
-        const res = await axios.post("http://localhost:8000/api/v1/user/register", input, {
+        const res = await axios.post(`${API_URL}/user/register`, input, {
           headers: { "Content-Type": "application/json" },
           withCredentials: true,
         })

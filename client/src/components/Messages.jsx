@@ -1,12 +1,14 @@
 "use client"
 
-import React, { useEffect, useRef } from "react"
+import React, { useEffect, useRef, useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { Link } from "react-router-dom"
-import { useSelector } from "react-redux"
+import { useDispatch, useSelector } from "react-redux"
 import useGetAllMessage from "@/hooks/useGetAllMessage"
 import useGetRTM from "@/hooks/useGetRTM"
+import CommentDialog from "./CommentDialog"
+import { setSelectedPost } from "@/redux/postSlice"
 
 const Messages = ({ selectedUser }) => {
   useGetRTM()
@@ -15,6 +17,14 @@ const Messages = ({ selectedUser }) => {
   const { messages } = useSelector((store) => store.chat)
   const { user } = useSelector((store) => store.auth)
   const messagesEndRef = useRef(null)
+  const [postOpen, setPostOpen] = useState(false)
+  const dispatch = useDispatch()
+
+  // open shared post with its comments
+  const openPostHandler = (post) => {
+    dispatch(setSelectedPost(post))
+    setPostOpen(true)
+  }
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -71,15 +81,50 @@ const Messages = ({ selectedUser }) => {
 
                     {/* Message Content */}
                     <div className={`flex flex-col ${isOwnMessage ? "items-end" : "items-start"} max-w-[65%] sm:max-w-[55%]`}>
-                      <div
-                        className={`px-5 py-3.5 rounded-2xl text-base shadow-sm ${
-                          isOwnMessage
-                            ? "bg-blue-500 text-white rounded-br-md"
-                            : "bg-white text-gray-800 rounded-bl-md border border-gray-200"
-                        }`}
-                      >
-                        <p className="leading-6 break-words">{msg.message}</p>
-                      </div>
+                      {/* Shared post */}
+                      {msg.type === "post" && (
+                        msg.sharedPost ? (
+                          <div
+                            onClick={() => openPostHandler(msg.sharedPost)}
+                            className="w-56 sm:w-64 mb-1 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                          >
+                            <div className="flex items-center gap-2 px-3 py-2">
+                              <Avatar className="w-7 h-7">
+                                <AvatarImage src={msg.sharedPost.author?.profilePicture || "/placeholder.svg"} />
+                                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-xs font-semibold">
+                                  {msg.sharedPost.author?.username?.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="font-semibold text-sm text-gray-900 truncate">{msg.sharedPost.author?.username}</span>
+                            </div>
+                            <img src={msg.sharedPost.image} alt="shared_post" className="w-full aspect-square object-cover" />
+                            {msg.sharedPost.caption && (
+                              <p className="px-3 py-2 text-sm text-gray-700 truncate">
+                                <span className="font-semibold text-gray-900 mr-1">{msg.sharedPost.author?.username}</span>
+                                {msg.sharedPost.caption}
+                              </p>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="w-56 sm:w-64 mb-1 px-4 py-6 bg-gray-100 border border-gray-200 rounded-2xl text-center">
+                            <p className="font-semibold text-sm text-gray-700">Post unavailable</p>
+                            <p className="text-xs text-gray-500 mt-1">This post was deleted or is from a private account</p>
+                          </div>
+                        )
+                      )}
+
+                      {/* Text message */}
+                      {msg.message && (
+                        <div
+                          className={`px-5 py-3.5 rounded-2xl text-base shadow-sm ${
+                            isOwnMessage
+                              ? "bg-blue-500 text-white rounded-br-md"
+                              : "bg-white text-gray-800 rounded-bl-md border border-gray-200"
+                          }`}
+                        >
+                          <p className="leading-6 break-words">{msg.message}</p>
+                        </div>
+                      )}
                       
                       {/* Timestamp */}
                       {showTime && (
@@ -107,6 +152,8 @@ const Messages = ({ selectedUser }) => {
           </div>
         )}
       </div>
+
+      <CommentDialog open={postOpen} setOpen={setPostOpen} />
     </div>
   )
 }

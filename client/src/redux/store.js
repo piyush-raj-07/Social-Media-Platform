@@ -3,6 +3,7 @@ import authSlice from "./authSlice.js"
 import postSlice from "./postSlice.js"
 import socketSlice from "./socketSlice.js"
 import chatSlice from "./chatSlice.js"
+import notificationSlice from "./notificationSlice.js"
 
 import { persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from "redux-persist"
 import storage from "redux-persist/lib/storage"
@@ -11,6 +12,7 @@ const persistConfig = {
   key: "root",
   version: 1,
   storage,
+  blacklist: ["notification", "post"], // always loaded fresh from server
 }
 
 const rootReducer = combineReducers({
@@ -18,7 +20,8 @@ const rootReducer = combineReducers({
   post: postSlice,
   socketio: socketSlice,
   chat: chatSlice,
-  
+  notification: notificationSlice,
+
 })
 
 const persistedReducer = persistReducer(persistConfig, rootReducer)

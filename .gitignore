@@ -4,6 +4,9 @@
 # Ignore all .env files
 **/.env
 
+# Local test data script (creates demo users)
+server/seed.js
+
 # Dist/build folders
 client/dist/
 server/dist/

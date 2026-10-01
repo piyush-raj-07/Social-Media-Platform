@@ -6,12 +6,14 @@ import dotenv from "dotenv";
 import connectDB from './utils/db.js';
 import userRoute from './routes/user.route.js';
 import postRoute from "./routes/post.route.js";
-import messageRoute from './routes/message.route.js'; 
+import messageRoute from './routes/message.route.js';
+import notificationRoute from './routes/notification.route.js';
 import { app, server } from "./socket/socket.js"; // ✅ already contains express()
 
 dotenv.config();
 
 const PORT = process.env.PORT || 3000;
+const API = '/api/v1'; // common part of every api url
 
 // Middleware to parse incoming JSON and form data
 app.use(express.json());
@@ -20,7 +22,7 @@ app.use(cookieParser());
 
 // CORS setup to allow frontend requests
 app.use(cors({
-  origin: "http://localhost:5173", // frontend origin
+  origin: process.env.CLIENT_URL, // frontend url from .env
   credentials: true
 }));
 
@@ -32,9 +34,10 @@ app.get('/', (req, res) => {
 });
 
 // Mount API routes
-app.use('/api/v1/user', userRoute);
-app.use('/api/v1/post', postRoute);
-app.use('/api/v1/message', messageRoute);
+app.use(`${API}/user`, userRoute);
+app.use(`${API}/post`, postRoute);
+app.use(`${API}/message`, messageRoute);
+app.use(`${API}/notification`, notificationRoute);
 
 // Start server after DB connection
 server.listen(PORT, async () => {

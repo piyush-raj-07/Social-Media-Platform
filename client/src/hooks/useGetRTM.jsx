@@ -6,14 +6,18 @@ const useGetRTM = () => {
     const dispatch = useDispatch();
     const { socket } = useSelector(store => store.socketio);
     const { messages } = useSelector(store => store.chat);
+    const { selectedUser } = useSelector(store => store.auth);
     useEffect(() => {
         socket?.on('newMessage', (newMessage) => {
-            dispatch(setMessages([...messages, newMessage]));
+            // only add the message if it is from the person whose chat is open
+            if (newMessage.senderId === selectedUser?._id) {
+                dispatch(setMessages([...messages, newMessage]));
+            }
         })
 
         return () => {
             socket?.off('newMessage');
         }
-    }, [messages, setMessages]);
+    }, [socket, messages, selectedUser, dispatch]);
 };
 export default useGetRTM;

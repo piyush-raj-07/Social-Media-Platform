@@ -22,5 +22,9 @@ import mongoose from 'mongoose';
         ref: 'Comment',
     }],
 }, { timestamps: true });
+
+// makes feed queries fast (posts of some authors, newest first)
+postSchema.index({ author: 1, _id: -1 });
+
  const Post = mongoose.model('Post', postSchema);
  export default Post;

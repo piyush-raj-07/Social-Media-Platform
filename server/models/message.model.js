@@ -13,7 +13,16 @@ const messageSchema = new mongoose.Schema({
     },
     message: {
         type: String,
-        required: true
+        default: ''         // can be empty when only a post is shared
+    },
+    type: {
+        type: String,
+        enum: ['text', 'post'],
+        default: 'text'
+    },
+    sharedPost: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Post'
     },
     read: {
         type: Boolean,
